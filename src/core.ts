@@ -2524,7 +2524,30 @@ async function checkedPolicyRootDefinition(root: RootInput): Promise<SkillRoot |
 }
 
 async function applyPolicySkillEnabled(definition: SkillRoot, name: string, enabled: boolean, state: ManagerState) {
-  const resolved = await resolveEntry(definition, name);
+  let resolved = await resolveEntry(definition, name);
+  if (resolved === null && definition.scope === "project" && enabled) {
+    const globalAgents = userRoots().find((r) => r.key === "agents");
+    const globalPath = globalAgents?.path || join(homedir(), ".agents", "skills");
+    const srcPath = join(globalPath, name);
+    const linkPath = join(definition.path, name);
+    if (await lstatOrNull(srcPath)) {
+      await fs.mkdir(definition.path, { recursive: true });
+      if (!(await lstatOrNull(linkPath))) {
+        try {
+          await fs.symlink(srcPath, linkPath, "dir");
+        } catch {}
+      }
+      resolved = await resolveEntry(definition, name);
+    }
+  } else if (definition.scope === "project" && !enabled) {
+    const linkPath = join(definition.path, name);
+    const st = await lstatOrNull(linkPath);
+    if (st && st.isSymbolicLink()) {
+      try {
+        await fs.unlink(linkPath);
+      } catch {}
+    }
+  }
   if (resolved === null) {
     const explicitlyEnabled = new Set(state.enabledSkills[definition.key] || []);
     if (!enabled && explicitlyEnabled.has(name)) {
@@ -4317,11 +4340,127 @@ export async function workspaceSkills(workspace: unknown, registered: unknown) {
   const snapshot = await state({ projectCwds: [found.cwd] });
   const identity = pathIdentity(found.root);
   const roots = snapshot.roots.filter((root) => root.scope === "project" && root.projectRoot && pathIdentity(root.projectRoot) === identity);
+
+  // 项目技能默认展示所有技能 (~/.agents/skills)
+  let projectAgents = roots.find((r) => r.kind === "project-agents");
+  if (!projectAgents) {
+    const id = projectIdentity(found.root);
+    projectAgents = {
+      key: `project-agents:${id}`,
+      kind: "project-agents",
+      localeKey: "projectAgents",
+      label: "Project Agent",
+      path: join(found.root, ".agents", "skills"),
+      scope: "project",
+      projectRoot: found.root,
+      projectName: basename(found.root) || found.root,
+      workspaceCwds: [found.cwd],
+      mutable: true,
+      native: true,
+      toggleable: true,
+      enabled: true,
+      exists: true,
+      skills: [],
+    };
+    roots.push(projectAgents);
+  } else {
+    projectAgents.mutable = true;
+    projectAgents.exists = true;
+  }
+
+  const userAgents = snapshot.roots.find((r) => r.key === "agents" || r.kind === "agents");
+  const globalSkills = userAgents?.skills || [];
+  const existingMap = new Map((projectAgents.skills || []).map((s) => [s.name, s]));
+
+  for (const g of globalSkills) {
+    if (!existingMap.has(g.name)) {
+      projectAgents.skills.push({
+        ...g,
+        enabled: false,
+        path: join(projectAgents.path, g.name, "SKILL.md"),
+        root: projectAgents.key,
+        scope: "project",
+        isOverlay: true,
+      });
+    }
+  }
+  projectAgents.skills.sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     project: { root: found.root, name: basename(found.root) || found.root, workspaceCwds: [found.cwd] },
     roots,
     warnings: snapshot.warnings,
   };
+}
+
+export async function setProjectGroupSkills(
+  workspace: string,
+  skillNames: string[],
+  enabled: boolean,
+  log?: Log,
+  registered?: unknown,
+) {
+  const found = await nearestProjectRoot(workspace);
+  if (!found || !found.root) {
+    return { ok: false, error: `工作区目录不可用: ${workspace}`, code: "error.workspace.unavailable" };
+  }
+  const id = projectIdentity(found.root);
+  const rootKey = `project-agents:${id}`;
+  const projectAgentsPath = join(found.root, ".agents", "skills");
+  const globalAgents = userRoots().find((r) => r.key === "agents");
+  const globalPath = globalAgents?.path || join(homedir(), ".agents", "skills");
+
+  if (enabled) {
+    await fs.mkdir(projectAgentsPath, { recursive: true });
+    for (const name of skillNames) {
+      const src = join(globalPath, name);
+      const dest = join(projectAgentsPath, name);
+      const srcStat = await lstatOrNull(src);
+      const destStat = await lstatOrNull(dest);
+      if (srcStat && !destStat) {
+        try {
+          await fs.symlink(src, dest, "dir");
+        } catch {}
+      }
+    }
+  } else {
+    for (const name of skillNames) {
+      const dest = join(projectAgentsPath, name);
+      const st = await lstatOrNull(dest);
+      if (st && st.isSymbolicLink()) {
+        try {
+          await fs.unlink(dest);
+        } catch {}
+      }
+    }
+  }
+
+  const current = await readManagerState();
+  if (current.writable !== false) {
+    const explicitlyEnabled = new Set(current.state.enabledSkills[rootKey] || []);
+    const explicitlyDisabled = new Set(current.state.disabledSkills[rootKey] || []);
+    for (const name of skillNames) {
+      if (enabled) {
+        explicitlyDisabled.delete(name);
+        explicitlyEnabled.add(name);
+      } else {
+        explicitlyEnabled.delete(name);
+        explicitlyDisabled.add(name);
+      }
+    }
+    current.state.enabledSkills[rootKey] = [...explicitlyEnabled].sort();
+    current.state.disabledSkills[rootKey] = [...explicitlyDisabled].sort();
+    await writeManagerState(current.state);
+  }
+
+  if (log) {
+    log(
+      enabled ? "policy-group-enable" : "policy-group-disable",
+      `${enabled ? "批量开启" : "批量关闭"} ${found.root} 的 ${skillNames.length} 个技能`,
+    );
+  }
+
+  return { ok: true, count: skillNames.length, enabled };
 }
 
 export async function state(options: ScopeOptions = {}) {

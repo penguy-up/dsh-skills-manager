@@ -37,6 +37,8 @@ export type ApiRoutes = RepositoryRoutes & Record<SkillsShSearchPath, SkillsShSe
     '/trash-delete': unknown;
     '/enable': unknown;
     '/disable': unknown;
+    '/adapt-provenance': { total: number; mapped: number; unknown: number; repos: string[] };
+    '/project-group-toggle': { ok: boolean; count: number; enabled: boolean };
     '/source-enable': unknown;
     '/source-disable': unknown;
     '/category-create': unknown;

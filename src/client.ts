@@ -70,7 +70,9 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         "group.hint": "在来源目录下按可核查的记录再分「仓库 → 仓库内目录」：安装记录 → 目录锁文件 → 技能元数据；没有记录的标为「来源未知」，不按目录名称猜测。",
         "group.provenanceCount": "{repos} 个来源仓库 · {unknown} 个技能来源未知", "group.unknownSource": "来源未知", "group.repoRoot": "仓库根目录（未分目录）",
         "group.evidence.install": "安装记录", "group.evidence.lock": "目录锁文件", "group.evidence.meta": "技能元数据", "group.evidence.root": "目录落点",
-        "group.openRepo": "打开 {repo}", "group.noRepo": "没有可核查的仓库记录，按来源目录归类。"
+        "group.openRepo": "打开 {repo}", "group.noRepo": "没有可核查的仓库记录，按来源目录归类。",
+        "btn.adaptProvenance": "适配来源仓库", "result.adaptProvenance": "已成功适配 {mapped} 个技能至 {repos} 个来源仓库，{unknown} 个技能划入「未知」分组。",
+        "group.toggle": "开关本组", "group.enableAll": "开启本组", "group.disableAll": "关闭本组", "group.groupToggled": "已更新本组 {count} 个技能状态。"
       },
       en: {
         "summary.group.one": "{count} skill", "summary.group.other": "{count} skills", "format.locale": "en-US", "format.warningSeparator": "; ",
@@ -105,7 +107,9 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         "group.hint": "Inside each source directory, verifiable records add a repository → directory hierarchy: install record → directory lock file → skill metadata; other sources are marked Unknown source. Directory names are not guessed.",
         "group.provenanceCount": "{repos} repositories · {unknown} skills with unknown source", "group.unknownSource": "Unknown source", "group.repoRoot": "Repository root (no category)",
         "group.evidence.install": "Install record", "group.evidence.lock": "Directory lock file", "group.evidence.meta": "Skill metadata", "group.evidence.root": "Directory fallback",
-        "group.openRepo": "Open {repo}", "group.noRepo": "No verifiable repository record; grouped by source directory."
+        "group.openRepo": "Open {repo}", "group.noRepo": "No verifiable repository record; grouped by source directory.",
+        "btn.adaptProvenance": "Adapt Repositories", "result.adaptProvenance": "Mapped {mapped} skills to {repos} repositories; {unknown} skills grouped under Unknown.",
+        "group.toggle": "Toggle group", "group.enableAll": "Enable all", "group.disableAll": "Disable all", "group.groupToggled": "Updated status for {count} skills in this group."
       }
     };
 
@@ -816,6 +820,28 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         setWorkspaceDetails({});
         return loadWorkspaces(true, true);
       }
+      function onAdaptProvenance() {
+        post("/adapt-provenance", {}, "result.adaptProvenance")
+          .then(function () {
+            updateFilter("group", "repo");
+            refresh(false);
+            if (scope === "project") refreshWorkspaceDetails();
+          })
+          .catch(function () {});
+      }
+      function toggleProjectGroup(skillNames: string[], enable: boolean) {
+        if (!selectedWorkspace || !skillNames.length) return;
+        post(
+          "/project-group-toggle",
+          { workspace: selectedWorkspace, skillNames: skillNames, enable: enable },
+          "group.groupToggled",
+          { count: skillNames.length }
+        )
+          .then(function () {
+            refreshWorkspaceDetails();
+          })
+          .catch(function () {});
+      }
       function openCreate() { setForm(Object.assign({}, form, { root: "dsh" })); setCreateDestination(defaultDestination()); setModal("create"); loadWorkspaces(); }
       function openImport() { setResult(null); setUpload(null); setImportDestination(defaultDestination()); setModal("import"); loadWorkspaces(); }
       var userDestinations = (data.writeDestinations || []).filter(function (item) { return item.key === "dsh" || item.key === "agents"; });
@@ -1185,11 +1211,26 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
       function renderProvenanceCategory(rootGroup: ProvenanceRootGroup, repoGroup: ProvenanceRepoGroup, category: string, rows: ProvenanceRow[], workspacePath?: string) {
         var catKey = JSON.stringify(["provcat", filterKey, workspacePath || "", rootGroup.key, repoGroup.key, category, query, activeSource, filters.status]);
         var open = expanded[catKey] === undefined ? provenanceAutoOpen() : expanded[catKey];
+        var catSkillNames = rows.map(function (r) { return r.skill.name; });
+        var catAllOn = catSkillNames.length > 0 && rows.every(function (r) { return isSkillEnabled(r.skill); });
+        var catActions: React.ReactNode[] = [];
+        if (workspacePath && catSkillNames.length > 0) {
+          catActions.push(h(SkillSwitch, {
+            key: "cat-toggle",
+            on: catAllOn,
+            label: (catAllOn ? t("group.disableAll") : t("group.enableAll")) + " " + categoryLabel(category),
+            disabled: busy,
+            onClick: function () {
+              toggleProjectGroup(catSkillNames, !catAllOn);
+            }
+          }));
+        }
         return h("section", { className: "dssm-cat dssm-prov-cat", key: catKey },
           h("div", { className: "dssm-cat-head" },
             h("button", { type: "button", className: "dssm-cat-main", "aria-expanded": open, onClick: function () { setExpanded(function (previous) { var next: Record<string, boolean> = {}; next[catKey] = !open; return Object.assign({}, previous, next); }); } },
               foldChevron(h, open), h("span", { className: "dssm-cat-title" }, categoryLabel(category)),
-              h("span", { className: "dssm-count" }, t(countKey("summary.group", rows.length), { count: rows.length })))),
+              h("span", { className: "dssm-count" }, t(countKey("summary.group", rows.length), { count: rows.length }))),
+            catActions.length ? h("span", { className: "dssm-source-actions" }, catActions) : null),
           open ? renderProvenanceSkills(rows, workspacePath) : null);
       }
       /** 第二层：来源目录里的仓库（或「未归类」）。 */
@@ -1211,6 +1252,32 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
             return rows.length ? renderProvenanceCategory(rootGroup, repoGroup, category, rows, workspacePath) : null;
           });
         }
+        var repoSkillNames = repoGroup.rows.map(function (r) { return r.skill.name; });
+        var repoAllOn = repoSkillNames.length > 0 && repoGroup.rows.every(function (r) { return isSkillEnabled(r.skill); });
+        var repoActions: React.ReactNode[] = [];
+        if (workspacePath && repoSkillNames.length > 0) {
+          repoActions.push(h(SkillSwitch, {
+            key: "repo-toggle",
+            on: repoAllOn,
+            label: (repoAllOn ? t("group.disableAll") : t("group.enableAll")) + " " + (repoGroup.repo || t("group.unknownSource")),
+            disabled: busy,
+            onClick: function () {
+              toggleProjectGroup(repoSkillNames, !repoAllOn);
+            }
+          }));
+        }
+        if (repoGroup.url) {
+          repoActions.push(h("a", {
+            key: "repo-link",
+            className: "dssm-icon-action dssm-prov-repo-link",
+            href: repoGroup.url,
+            target: "_blank",
+            rel: "noopener noreferrer",
+            "aria-label": t("group.openRepo", { repo: repoGroup.repo || "" }),
+            title: t("group.openRepo", { repo: repoGroup.repo || "" }),
+            style: { width: 22, minWidth: 22, height: 22, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--dsw-radius-sm, 8px)" }
+          }, strokeIcon("M12 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5m4-1h3.5m0 0v3.5m0-3.5L7 10")));
+        }
         return h("section", { className: "dssm-cat dssm-prov-repo", key: repoGroup.key },
           h("div", { className: "dssm-cat-head" },
             h("button", { type: "button", className: "dssm-cat-main", "aria-expanded": open, onClick: function () { setExpanded(function (previous) { var next: Record<string, boolean> = {}; next[expansionKey] = !open; return Object.assign({}, previous, next); }); } },
@@ -1219,7 +1286,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
               h("span", { className: "dssm-cat-title" }, label),
               h("span", { className: "dssm-count" }, t(countKey("summary.group", repoGroup.rows.length), { count: repoGroup.rows.length })),
               h("span", { className: "dssm-prov-badge", title: t("group.hint") }, t("group.evidence." + repoGroup.kind))),
-            repoGroup.url ? h("span", { className: "dssm-source-actions" }, h("a", { className: "dssm-icon-action dssm-prov-repo-link", href: repoGroup.url, target: "_blank", rel: "noopener noreferrer", "aria-label": t("group.openRepo", { repo: repoGroup.repo || "" }), title: t("group.openRepo", { repo: repoGroup.repo || "" }), style: { width: 22, minWidth: 22, height: 22, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--dsw-radius-sm, 8px)" } }, strokeIcon("M12 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5m4-1h3.5m0 0v3.5m0-3.5L7 10"))) : null),
+            repoActions.length ? h("span", { className: "dssm-source-actions" }, repoActions) : null),
           body);
       }
       /** 第一层：来源目录本身，与默认视图保持同一套头部控件（新建分类 / 启停来源）。 */
@@ -1355,6 +1422,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
 
       var skillControls = [ scope === "project" ? null : h("div", { key: "summary", className: "dssm-summary" }, [["total", "summary.total"], ["enabled", "summary.enabled"], ["disabled", "summary.disabled"], ["invalid", "summary.invalid"]].map(function (item) { return h("div", { key: item[1], className: "dssm-stat" }, h("strong", null, summary[item[0]]), t(countKey(item[1], summary[item[0]]), { count: summary[item[0]] }).replace(String(summary[item[0]]), "")); })), h("div", { key: "filters", className: "dssm-filters" }, scope === "project" ? null : h("div", { className: "dssm-source-filter" }, h(SourceSelect, { value: activeSource, label: t("filter.source"), options: options, onChange: setSource })), h("div", { className: "dssm-status-filter" }, h(SourceSelect, { values: ["group:" + (filters.group || ""), "status:" + (filters.status || "")], label: t("filter.status"), text: statusGroupLabel, options: statusOptions, onChange: onStatusGroupChange })), scope === "project" ? h("div", { className: "dssm-project-filter" }, h(SourceSelect, { value: selectedWorkspace, label: t("filter.workspace"), disabled: workspaceList.loading || !workspaceRows.length, options: workspaceRows.map(function (row) { return { value: workspacePath(row), label: row.name + (!row.available ? " · " + (row.errorCode === "ENOENT" || row.errorCode === "ENOTDIR" ? t("workspace.missing") : (row.errorCode === "EACCES" || row.errorCode === "EPERM" ? t("workspace.unreadable") : t("workspace.unavailable"))) : "") + (workspaceRows.filter(function (other) { return other.name === row.name; }).length > 1 ? " · " + workspacePath(row) : ""), disabled: !row.available || !workspacePath(row) }; }), onChange: selectWorkspace })) : null, h(Input, { className: "dssm-search", allowClear: true, value: query, "aria-label": t("search"), placeholder: t("search.placeholder"), onChange: function (e) { setQuery(e.target.value); } }),
         scope !== "trash" ? h("div", { className: "dssm-filter-actions" },
+          filterActionButton(t("btn.adaptProvenance"), strokeIcon("M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"), function () { onAdaptProvenance(); }, busy),
           filterActionButton(t("btn.refresh"), strokeIcon("M13.5 8A5.5 5.5 0 118 2.5c2.3 0 4.3 1.4 5.1 3.5m.4-3.5v3.5H10"), function () { refresh(false); if (scope === "project") refreshWorkspaceDetails(); }, busy || snapshot.loading),
           h(SourceSelect, {
             action: true,

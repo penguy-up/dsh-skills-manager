@@ -38,6 +38,7 @@ import {
   resolveWorkspaceTarget,
   listWorkspaces,
   workspaceSkills,
+  setProjectGroupSkills,
   logPath,
   getEntryLocation,
   getSidebarEntry,
@@ -49,7 +50,7 @@ import {
 import { registerPluginUpdater } from "./plugin-updater.js";
 import { createRepositoryManager } from "./repositories.js";
 import { installationSourceKey } from "./repository-updates.js";
-import { attachProvenance } from "./provenance.js";
+import { attachProvenance, adaptProvenance } from "./provenance.js";
 import { listClawHub, searchClawHub } from "./clawhub-catalog.js";
 import { searchSkillsSh } from "./skills-sh-catalog.js";
 import { loadCatalogPackage, readCatalogSkill } from "./catalog-skill.js";
@@ -671,6 +672,27 @@ function apply(ctx: HostContext, config?: PluginConfig) {
         const snapshot = await workspaceSkills(b.workspace, registeredWorkspacePaths(ctx));
         return "roots" in snapshot ? attachSources(snapshot) : snapshot;
       }),
+    },
+    {
+      path: `${API_PREFIX}/adapt-provenance`,
+      methods: ["POST"],
+      fetch: (req) => handlePost(req, async () => {
+        const current = await state({});
+        return await adaptProvenance(current.roots);
+      }, { afterSuccess: afterWrite }),
+    },
+    {
+      path: `${API_PREFIX}/project-group-toggle`,
+      methods: ["POST"],
+      fetch: (req) => handlePost(req, async (b) => {
+        return await setProjectGroupSkills(
+          String(b.workspace || ""),
+          Array.isArray(b.skillNames) ? b.skillNames : [],
+          Boolean(b.enable),
+          log,
+          registeredWorkspacePaths(ctx),
+        );
+      }, { afterSuccess: afterWrite }),
     },
     {
       path: `${API_PREFIX}/enable`,
