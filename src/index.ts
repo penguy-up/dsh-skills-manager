@@ -246,8 +246,10 @@ function registerAgentSkillProviders(ctx: HostContext, invalidators: Set<() => v
       ? agentCtx.get("skills")
       : agentCtx && agentCtx.skills;
     if (!skills || typeof skills.registerProvider !== "function") return;
-    const dispose = skills.registerProvider((control) => externalSkillProvider(control, invalidators));
-    registrations.set(agent.id, dispose);
+    try {
+      const dispose = skills.registerProvider((control) => externalSkillProvider(control, invalidators));
+      registrations.set(agent.id, dispose);
+    } catch {}
   };
 
   const uninstall = (agent: Agent) => {
@@ -352,38 +354,50 @@ function apply(ctx: HostContext, config?: PluginConfig) {
     mutationQueue = queued.catch(() => undefined);
     return queued;
   };
-  ctx.effect(() => ctx.skills.registerProvider((control) => externalSkillProvider(control, providerInvalidators)), "skills-manager global external skills provider");
+  ctx.effect(() => {
+    try {
+      return ctx.skills.registerProvider((control) => externalSkillProvider(control, providerInvalidators));
+    } catch {
+      return () => {};
+    }
+  }, "skills-manager global external skills provider");
   ctx.effect(() => registerAgentSkillProviders(ctx, providerInvalidators), "skills-manager agent-scoped external skills providers");
 
   if (ctx.tools && typeof ctx.tools.register === "function") {
-    ctx.effect(() => ctx.tools!.register({
-      name: "create_skill",
-      description: "Create a new local DSH skill in DSH_HOME/skills. Use only when the user explicitly asks to create or save a reusable skill.",
-      parameters: {
-        type: "object",
-        properties: {
-          name: { type: "string", description: "Skill name; it will be normalized to kebab-case." },
-          description: { type: "string", description: "A concise routing description for when to use the skill." },
-          body: { type: "string", description: "Markdown instructions that form the skill body." },
-        },
-        required: ["name", "description", "body"],
-        additionalProperties: false,
-      },
-      output: {
-        schema: { type: "object" },
-        render: (_args, value) => [{ type: "text", text: value && value.ok === false ? `Skill creation failed${typeof value.code === "string" ? ` (${value.code})` : ""}.` : `Created DSH skill ${value.name} at ${value.path}` }],
-      },
-      async execute(args) {
-        return enqueueMutation(async () => {
-          const result = await createSkill(args, log);
-          if (!result || result.ok !== false) afterWrite();
-          return result;
+    ctx.effect(() => {
+      try {
+        return ctx.tools!.register({
+          name: "create_skill",
+          description: "Create a new local DSH skill in DSH_HOME/skills. Use only when the user explicitly asks to create or save a reusable skill.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Skill name; it will be normalized to kebab-case." },
+              description: { type: "string", description: "A concise routing description for when to use the skill." },
+              body: { type: "string", description: "Markdown instructions that form the skill body." },
+            },
+            required: ["name", "description", "body"],
+            additionalProperties: false,
+          },
+          output: {
+            schema: { type: "object" },
+            render: (_args, value) => [{ type: "text", text: value && value.ok === false ? `Skill creation failed${typeof value.code === "string" ? ` (${value.code})` : ""}.` : `Created DSH skill ${value.name} at ${value.path}` }],
+          },
+          async execute(args) {
+            return enqueueMutation(async () => {
+              const result = await createSkill(args, log);
+              if (!result || result.ok !== false) afterWrite();
+              return result;
+            });
+          },
+          presentCall(args) {
+            return { card: "generic", title: "Create DSH skill", kind: "edit", rawInput: args && args.name ? String(args.name) : undefined };
+          },
         });
-      },
-      presentCall(args) {
-        return { card: "generic", title: "Create DSH skill", kind: "edit", rawInput: args && args.name ? String(args.name) : undefined };
-      },
-    }), "skills-manager create_skill tool");
+      } catch {
+        return () => {};
+      }
+    }, "skills-manager create_skill tool");
     if (typeof ctx.on === "function") {
       const registerPreExecute = () => ctx.on!("tools/pre-execute", (exec, next) => {
         if (exec && exec.name === "create_skill") {
@@ -847,18 +861,24 @@ function apply(ctx: HostContext, config?: PluginConfig) {
   ctx.effect(() => {
     // 方案 A：优先官方标准 connection.fetch.register
     if (ctx.connection?.fetch?.register) {
-      const disposers = routes.map((route) =>
-        ctx.connection!.fetch.register({
-          path: route.path,
-          methods: route.methods,
-          requestBody: route.requestBody ?? "buffered",
-          fetch: route.fetch,
-        })
-      );
+      const disposers = routes.map((route) => {
+        try {
+          return ctx.connection!.fetch.register({
+            path: route.path,
+            methods: route.methods,
+            requestBody: route.requestBody ?? "buffered",
+            fetch: route.fetch,
+          });
+        } catch (err) {
+          ctx.logger?.warn?.(`Skills manager route ${route.path} skipped: ${err}`);
+          return () => {};
+        }
+      });
       return () => {
         for (const disposer of disposers) {
           try {
-            disposer();
+            if (typeof disposer === "function") (disposer as () => void)();
+            else if (disposer && typeof (disposer as { dispose?: () => void }).dispose === "function") (disposer as { dispose: () => void }).dispose();
           } catch {
             /* ignore */
           }

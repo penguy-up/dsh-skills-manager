@@ -410,11 +410,12 @@ function registerPluginUpdater(ctx: HostContext, options: UpdateOptions) {
   const host = ctx;
   let installing = false;
   if (host.connection?.fetch?.register) {
-    return host.connection.fetch.register({
-      path: options.endpoint,
-      methods: ["GET", "HEAD", "POST"],
-      requestBody: "buffered",
-      fetch: async (request: Request) => {
+    try {
+      return host.connection.fetch.register({
+        path: options.endpoint,
+        methods: ["GET", "HEAD", "POST"],
+        requestBody: "buffered",
+        fetch: async (request: Request) => {
         try {
           if (options.isEnabled) {
             const allowed = await options.isEnabled();
@@ -478,6 +479,9 @@ function registerPluginUpdater(ctx: HostContext, options: UpdateOptions) {
         }
       },
     });
+  } catch {
+    return () => {};
+  }
   }
   ctx.logger?.warn?.("Plugin updater requires authenticated connection.fetch");
   return () => {};
