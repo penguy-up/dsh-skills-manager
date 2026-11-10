@@ -15,11 +15,22 @@
   [![许可证：Apache-2.0](https://img.shields.io/badge/许可证-Apache--2.0-blue.svg)](LICENSE)
   [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-skills-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
   [![npm 下载量](https://img.shields.io/npm/dt/%40michengai%2Fdsh-skills-manager.svg?label=npm%20%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
-  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-skills-manager)
+  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/penguy-up/dsh-skills-manager)
   [![DSH 支持至 0.2.2-rc.1](https://img.shields.io/badge/DSH-%E6%94%AF%E6%8C%81%E8%87%B3%200.2.2--rc.1-2563eb.svg)](#安装)
 </div>
 
 > DSH Skills Manager 是社区维护的 DeepSeek Harness（DSH）插件，并非 DeepSeek AI 官方产品。
+
+## 二开说明
+
+本项目基于 [MichengAI/dsh-skills-manager](https://github.com/MichengAI/dsh-skills-manager) 二次开发，作为独立仓库持续维护。核心功能包括：
+
+- 集中管理 DSH、公共 Agent 及多个主流 Agent 的全局和项目技能。
+- 从 ClawHub、skills.sh 和 GitHub 仓库发现、订阅与安装技能。
+- 支持分类、搜索、启停、批量整理、更新预览、备份回退和回收站恢复。
+- 支持创建、导入技能及自定义外部 Agent 技能目录。
+
+上游项目保留为同步参考；本仓库的源码、构建产物、兼容性和发行版本以本仓库为准。
 
 ## 功能概览
 
@@ -205,7 +216,7 @@ DeepSeek Harness 宿主加载机制对技能标识符遵循规范命名约束：
 | --- | --- |
 | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | 整理项目与会话、搜索任务、跳转对话轮次 |
 | [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 按任务选择并召唤专业角色 |
-| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | 管理本机与项目技能，从仓库安装、更新和回退 |
+| [Skills Manager（二开版）](https://github.com/penguy-up/dsh-skills-manager) | 管理本机与项目技能，从仓库安装、更新和回退 |
 | [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | 搜索、恢复或清理已归档会话 |
 | [IM Connect](https://github.com/MichengAI/dsh-im-connect) | 从消息平台下任务、收回复 |
 | [Automation](https://github.com/MichengAI/dsh-automation) | 按计划执行任务，查看每次运行的结果 |
@@ -217,7 +228,7 @@ DeepSeek Harness 宿主加载机制对技能标识符遵循规范命名约束：
 
 ## 反馈与贡献
 
-遇到问题或有建议，欢迎[提交 Issue](https://github.com/MichengAI/dsh-skills-manager/issues)。请附上 DSH 与插件版本、复现步骤；界面问题可附完整截图。
+遇到本二开版本的问题或有建议，欢迎[提交 Issue](https://github.com/penguy-up/dsh-skills-manager/issues)。上游原始功能的问题，请反馈至[上游仓库](https://github.com/MichengAI/dsh-skills-manager/issues)。请附上 DSH 与插件版本、复现步骤和相关日志。
 
 源码位于 `src`，使用严格 TypeScript，保留现有插件架构。开发时执行 `npm run typecheck` 检查类型，`npm run build` 生成运行产物，`npm run verify` 执行完整回归与打包验证。GitHub 与 npm 都包含可直接运行的 `lib`。改动源码后，提交前请先运行构建。打包前仍会自动检查类型并构建，npm 安装包仍包含所需 JavaScript 产物。CI 在 Node.js 22.19.0 和 24 上执行完整验证，代码改动也会自动触发受支持宿主兼容矩阵。欢迎提交改进。
 
