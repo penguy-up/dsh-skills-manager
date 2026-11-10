@@ -225,8 +225,8 @@ export function setupSidebarEntry(
 
   const sync = () => {
     if (destroyed) return;
-    if (sidebarSupported && isSidebarEnabled()) {
-      if (!offPanel) {
+    if (sidebarSupported) {
+      if (isSidebarEnabled() && !offPanel) {
         const res = ctx.slots.register({
           name: "main",
           key: SIDEBAR_PANEL_ID,
@@ -235,7 +235,7 @@ export function setupSidebarEntry(
         }, (ownerProps?: any) => h("div", { className: "dssm-main-panel" }, renderPanel(ownerProps)));
         offPanel = typeof res === "function" ? (res as () => void) : () => {};
       }
-      if (!offRow) {
+      if (isSidebarEnabled() && !offRow) {
         const res = ctx.slots.register({
           name: "sidebar.panellist",
           id: SIDEBAR_PANEL_ID,
@@ -244,6 +244,13 @@ export function setupSidebarEntry(
           locale: ns,
         }, ((ownerProps?: { size?: number }) => h(SkillSidebarIcon as any, ownerProps)) as any);
         offRow = typeof res === "function" ? (res as () => void) : () => {};
+      }
+      if (!isSidebarEnabled()) {
+        if (layoutService?.panelInfo && typeof layoutService.selectPanel === 'function') {
+          try { if (layoutService.panelInfo.getSnapshot().activePanelId === SIDEBAR_PANEL_ID) layoutService.selectPanel(null); } catch {}
+        }
+        if (offRow) { try { offRow(); } catch {} offRow = null; }
+        if (offPanel) { try { offPanel(); } catch {} offPanel = null; }
       }
       if (options.renderProjectPanel && !offProjectPanel) {
         const res = ctx.slots.register({
