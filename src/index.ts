@@ -44,10 +44,7 @@ import {
   getSidebarEntry,
   setEntryLocation,
   setSidebarEntry,
-  getOnlineUpdate,
-  setOnlineUpdate,
 } from "./core.js";
-import { registerPluginUpdater } from "./plugin-updater.js";
 import { createRepositoryManager } from "./repositories.js";
 import { installationSourceKey } from "./repository-updates.js";
 import { attachProvenance, adaptProvenance } from "./provenance.js";
@@ -312,26 +309,12 @@ function isDangerFullAccess(ctx: HostContext, exec?: { agent?: unknown }): boole
 }
 
 export interface PluginConfig {
-  updater?: boolean;
-  onlineUpdate?: boolean;
   maxRepositoryBytes?: number;
   maxTransientBytes?: number;
   gitTimeoutMs?: number;
 }
 
 function apply(ctx: HostContext, config?: PluginConfig) {
-  const hostDisabled = config?.updater === false || config?.onlineUpdate === false;
-  const isUpdateEnabled = async () => {
-    if (hostDisabled) return false;
-    return await getOnlineUpdate();
-  };
-
-  ctx.effect(() => registerPluginUpdater(ctx, {
-    endpoint: "/api/michengai/dsh-skills-manager/update",
-    packageName: "@michengai/dsh-skills-manager",
-    manifestUrl: new URL("../package.json", import.meta.url),
-    isEnabled: isUpdateEnabled,
-  }), "skills-manager: plugin updater");
   const log = makeLog();
   const repositories = createRepositoryManager({
     log,
@@ -521,25 +504,6 @@ function apply(ctx: HostContext, config?: PluginConfig) {
             return { ok: true, location, enabled: location !== "settings" };
           }
           throw Object.assign(new Error("缺少合法的 location 或 enabled 参数"), { statusCode: 400, code: "error.proto.invalidParams" });
-        });
-      },
-    },
-    {
-      path: `${API_PREFIX}/online-update`,
-      methods: ["GET", "HEAD", "POST"],
-      fetch: (req) => {
-        if (req.method === "GET" || req.method === "HEAD") {
-          return runFetch(async () => ({ enabled: await isUpdateEnabled(), locked: hostDisabled }), undefined, req.method === "HEAD");
-        }
-        return handlePost(req, async (b) => {
-          if (!b || typeof b.enabled !== "boolean") {
-            throw Object.assign(new Error("enabled 必须是布尔值"), { statusCode: 400, code: "error.proto.invalidParams" });
-          }
-          if (hostDisabled) {
-            throw Object.assign(new Error("在线更新已被宿主配置锁定禁用"), { statusCode: 403, code: "error.update.disabled" });
-          }
-          const enabled = await setOnlineUpdate(b.enabled);
-          return { enabled };
         });
       },
     },
@@ -893,4 +857,4 @@ function apply(ctx: HostContext, config?: PluginConfig) {
 export { activeSessionCwds, apply, inject, name, notifyChatCatalog, registerAgentSkillProviders };
 
 /** 请求体由各业务入口现有校验解析，此类型只声明路由转交的字段。 */
-type RequestBody = CreateInput & UploadInput & SkillRequest & RepositoryInput & {root?: string; source?: string; conflict?: string; dryRun?: boolean; workspace?: unknown; enabled?: boolean; location?: string; category?: string; targetName?: string; position?: "before" | "after"; catalog?: string; skillId?: string; owner?: string; slug?: string; path?: unknown; key?: string; id?: string; label?: unknown; group?: unknown; sources?: unknown[]; note?: string};
+type RequestBody = CreateInput & UploadInput & SkillRequest & RepositoryInput & {root?: string; source?: string; conflict?: string; dryRun?: boolean; workspace?: unknown; enabled?: boolean; location?: string; category?: string; targetName?: string; position?: "before" | "after"; catalog?: string; skillId?: string; owner?: string; slug?: string; path?: unknown; key?: string; id?: string; label?: unknown; group?: unknown; sources?: unknown[]; note?: string; skillNames?: string[]; enable?: boolean};

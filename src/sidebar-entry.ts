@@ -9,6 +9,8 @@ const h = React.createElement;
 export const BUNDLE_KEY = "@michengai/dsh-skills-manager";
 export const SIDEBAR_PANEL_ID = "skills-manager";
 export const SIDEBAR_PANEL_ORDER = 2;
+export const PROJECT_SIDEBAR_PANEL_ID = "project-skills";
+export const PROJECT_SIDEBAR_PANEL_ORDER = 3;
 
 export const sidebarLocales = {
   zh: {
@@ -20,6 +22,8 @@ export const sidebarLocales = {
     "sidebar.entry.title": "侧边栏入口",
     "sidebar.entry.desc": "在侧栏「插件」下方显示技能。设置里的入口不变。",
     "sidebar.entry.toggle": "切换侧边栏入口",
+    "sidebar.project.title": "项目技能",
+    "sidebar.project.desc": "按当前工作区查看项目技能。",
   },
   en: {
     "entry.location.title": "Entry placement",
@@ -30,6 +34,8 @@ export const sidebarLocales = {
     "sidebar.entry.title": "Sidebar entry",
     "sidebar.entry.desc": "Show Skills below Plugins in the sidebar. The Settings entry stays either way.",
     "sidebar.entry.toggle": "Toggle sidebar entry",
+    "sidebar.project.title": "Project skills",
+    "sidebar.project.desc": "View skills from the current workspace.",
   },
 };
 
@@ -161,6 +167,7 @@ export interface SetupSidebarEntryOptions {
   callApi: (path: "/sidebar-entry", options?: RequestInit) => Promise<{ location?: EntryLocation; enabled?: boolean }>;
   headers: Record<string, string>;
   renderPanel: (ownerProps?: any) => React.ReactNode;
+  renderProjectPanel?: (ownerProps?: any) => React.ReactNode;
   ns: string;
   onLocationChange?: (location: EntryLocation) => void;
 }
@@ -196,6 +203,8 @@ export function setupSidebarEntry(
   let sidebarSupported = false;
   let offPanel: (() => void) | null = null;
   let offRow: (() => void) | null = null;
+  let offProjectPanel: (() => void) | null = null;
+  let offProjectRow: (() => void) | null = null;
   let epoch = 0;
   let destroyed = false;
   let layoutService: {
@@ -236,10 +245,30 @@ export function setupSidebarEntry(
         }, ((ownerProps?: { size?: number }) => h(SkillSidebarIcon as any, ownerProps)) as any);
         offRow = typeof res === "function" ? (res as () => void) : () => {};
       }
+      if (options.renderProjectPanel && !offProjectPanel) {
+        const res = ctx.slots.register({
+          name: "main",
+          key: PROJECT_SIDEBAR_PANEL_ID,
+          locale: ns,
+          inject: () => ({ t: ctx.locale?.bind ? ctx.locale.bind(ns) : undefined }),
+        }, (ownerProps?: any) => h("div", { className: "dssm-main-panel" }, options.renderProjectPanel!(ownerProps)));
+        offProjectPanel = typeof res === "function" ? (res as () => void) : () => {};
+      }
+      if (options.renderProjectPanel && !offProjectRow) {
+        const res = ctx.slots.register({
+          name: "sidebar.panellist",
+          id: PROJECT_SIDEBAR_PANEL_ID,
+          order: PROJECT_SIDEBAR_PANEL_ORDER,
+          label: () => ctx.locale.bind(ns)("sidebar.project.title"),
+          locale: ns,
+        }, ((ownerProps?: { size?: number }) => h(SkillSidebarIcon as any, ownerProps)) as any);
+        offProjectRow = typeof res === "function" ? (res as () => void) : () => {};
+      }
     } else {
       if (layoutService?.panelInfo && typeof layoutService.selectPanel === "function") {
         try {
-          if (layoutService.panelInfo.getSnapshot().activePanelId === SIDEBAR_PANEL_ID) {
+          const activePanelId = layoutService.panelInfo.getSnapshot().activePanelId;
+          if (activePanelId === SIDEBAR_PANEL_ID || activePanelId === PROJECT_SIDEBAR_PANEL_ID) {
             layoutService.selectPanel(null);
           }
         } catch {}
@@ -251,6 +280,14 @@ export function setupSidebarEntry(
       if (offPanel) {
         try { offPanel(); } catch {}
         offPanel = null;
+      }
+      if (offProjectRow) {
+        try { offProjectRow(); } catch {}
+        offProjectRow = null;
+      }
+      if (offProjectPanel) {
+        try { offProjectPanel(); } catch {}
+        offProjectPanel = null;
       }
     }
   };
@@ -367,6 +404,14 @@ export function setupSidebarEntry(
       if (offPanel) {
         try { offPanel(); } catch {}
         offPanel = null;
+      }
+      if (offProjectRow) {
+        try { offProjectRow(); } catch {}
+        offProjectRow = null;
+      }
+      if (offProjectPanel) {
+        try { offProjectPanel(); } catch {}
+        offProjectPanel = null;
       }
     },
   };
