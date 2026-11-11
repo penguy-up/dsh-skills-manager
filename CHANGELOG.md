@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.4.1-fork.2] - 2026-11-11
+## [1.4.1-fork.3] - 2026-11-11
 
-- Second fork iteration based on upstream v1.4.1.
-- Fix Project Skills provenance counts and right-sidebar workspace selection.
+- Third fork iteration based on upstream v1.4.1.
+- Document fork features and fix Project Skills provenance counts and workspace selection.
 
 ## [1.4.1] - 2026-11-11
 
