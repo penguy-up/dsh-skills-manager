@@ -191,12 +191,22 @@ function notifyChatCatalog(ctx: HostContext, invalidateSkills?: () => void) {
  */
 function registeredWorkspacePaths(ctx: HostContext): string[] | undefined {
   try {
+    const paths = new Set<string>();
     const registry = typeof ctx.get === "function" ? ctx.get("workspaceRegistry") : undefined;
-    if (!registry || typeof registry.list !== "function") return undefined;
-    return [...registry.list()].flatMap((item) => {
-      const path = item?.path ?? item?.cwd;
-      return typeof path === "string" && path.trim() ? [path.trim()] : [];
-    });
+    if (registry && typeof registry.list === "function") {
+      for (const item of registry.list()) {
+        const path = item?.path ?? item?.cwd;
+        if (typeof path === "string" && path.trim()) paths.add(path.trim());
+      }
+    }
+    const workspaces = typeof (ctx as any).get === "function" ? (ctx as any).get("workspaces") : undefined;
+    const snapshot = workspaces?.list?.getSnapshot?.();
+    if (snapshot?.phase === "ready" && Array.isArray(snapshot.items)) {
+      for (const item of snapshot.items) {
+        if (typeof item?.path === "string" && item.path.trim()) paths.add(item.path.trim());
+      }
+    }
+    return paths.size ? [...paths] : undefined;
   } catch {
     return undefined;
   }

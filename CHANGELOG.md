@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.4.1-fork.4] - 2026-11-11
+## [1.4.1-fork.5] - 2026-11-11
 
-- Fourth fork iteration based on upstream v1.4.1.
-- Bind Project Skills to the host workspace service for the current session, matching the right Files module.
+- Fifth fork iteration based on upstream v1.4.1.
+- Merge host workspaces with registered workspaces so Project Skills shows every workspace.
 
 ## [1.4.1] - 2026-11-11
 
