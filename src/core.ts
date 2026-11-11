@@ -4272,20 +4272,15 @@ export async function listWorkspaces(registered: unknown): Promise<WorkspaceRow[
         rows.set(key, { name: basename(path) || path, path, registeredPaths: [path], available: false, errorCode: found?.code, skillCount: 0, roots: [] });
       continue;
     }
-    const key = pathIdentity(found.root);
-    const existing = rows.get(key);
-    if (existing) {
-      if (!existing.registeredPaths.some((item) => sameWorkspace(item, path))) existing.registeredPaths.push(path);
-      continue;
-    }
+    const key = `workspace:${pathIdentity(path)}`;
     rows.set(key, {
-      name: basename(found.root) || found.root,
-      path: found.root,
+      name: basename(path) || path,
+      path,
       projectRoot: found.root,
       registeredPaths: [path],
       available: true,
       skillCount: 0,
-      roots: await projectRoots([found.cwd]),
+      roots: await projectRoots([path]),
     });
   }
   for (const row of rows.values()) {

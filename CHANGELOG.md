@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.4.1-fork.5] - 2026-11-11
+## [1.4.1-fork.6] - 2026-11-11
 
-- Fifth fork iteration based on upstream v1.4.1.
-- Merge host workspaces with registered workspaces so Project Skills shows every workspace.
+- Sixth fork iteration based on upstream v1.4.1.
+- Keep each workspace as a separate Project Skills option instead of collapsing by project root.
 
 ## [1.4.1] - 2026-11-11
 
