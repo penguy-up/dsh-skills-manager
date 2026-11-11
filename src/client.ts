@@ -1679,17 +1679,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
       let settingsSectionSupported = false;
       let settingsNavIconSupported = false;
 
-      const mountSettingsSection = () => {
-        if (!settingsSectionSupported || offSettingsSection) return;
-        if (sidebarController && !sidebarController.isSettingsSectionEnabled()) return;
-        try {
-          const unreg = ctx.slots.register({ name: "settings.section", id: "skills-manager", order: 25, label: function () { return ctx.locale.bind(NS)("title"); }, icon: "skill", locale: NS }, SkillManagerSection);
-          offSettingsSection = typeof unreg === "function" ? (unreg as () => void) : () => {};
-        } catch (reason) {
-          console.warn("skills-manager: register settings.section failed:", reason);
-          offSettingsSection = null;
-        }
-      };
+      const mountSettingsSection = () => {};
 
       const unmountSettingsSection = () => {
         if (offSettingsSection) {
