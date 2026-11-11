@@ -151,6 +151,7 @@ export interface SkillView extends Omit<SkillEntry, 'docPath' | 'entryPath' | 'r
     installSource?: InstallSource | null;
     /** 来源证据；`/state` 与 `/workspace-skills` 都会返回，缺失表示尚未挂载。 */
     provenance?: SkillProvenance | null;
+    provenanceInherited?: boolean;
     categoryId?: string | null;
     /** 用户自定义简介/备注。若未设置则为 null。 */
     customNote?: string | null;

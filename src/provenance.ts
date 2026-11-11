@@ -304,6 +304,7 @@ export async function attachProvenance<T extends { roots: RootView[] }>(snapshot
       while (next < skills.length) {
         const skill = skills[next++];
         try {
+          if (skill.provenanceInherited && skill.provenance) continue;
           skill.provenance = await resolveProvenance({ rootPath: root.path, skillPath: skill.path, name: skill.name, declaredName: skill.declaredName, installSource: skill.installSource }, lock);
         } catch { skill.provenance = unknown(); }
       }

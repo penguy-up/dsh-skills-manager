@@ -768,7 +768,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         var target = (activeSource && overridableRoots.find(function (r) { return r.key === activeSource; })) || overridableRoots[0];
         openRootPath(target);
       }
-      var filterKey = scope === "project" ? "project" : "user", filters = savedFilters[filterKey] || { query: "", source: "", status: "" }, query = filters.query, source = filters.source;
+      var filterKey = scope === "project" ? "project" : "user", filters = savedFilters[filterKey] || { query: "", source: "", status: "", group: "repo" }, query = filters.query, source = filters.source;
       function updateFilter(key: string, value: string) { setSavedFilters(function (previous) { return Object.assign({}, previous, { [filterKey]: Object.assign({}, filters, { [key]: value }) }); }); }
       function setQuery(value: string) { updateFilter("query", value); }
       function setSource(value: string) { updateFilter("source", value); }
@@ -1336,7 +1336,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
       function renderList() {
         var project = scope === "project", path = project ? selectedWorkspace : undefined;
         var body: React.ReactNode;
-        if (filters.group === "repo") body = renderProvenanceList(path);
+        if ((filters.group || "repo") === "repo") body = renderProvenanceList(path);
         else {
           var groups = roots.map(function (root) { return renderRoot(root, path, undefined, path ? path + "|" : undefined); }).filter(Boolean);
           body = groups.length ? groups : h("div", { className: "dssm-empty" }, query || filters.status ? t("empty.search") : t("empty.source"));
@@ -1399,7 +1399,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         { value: "status:invalid", label: t("status.invalid") },
       ];
       var statusText = filters.status ? t("status." + filters.status) : t("filter.statusAll");
-      var statusGroupLabel = filters.group === "repo" ? statusText + " · " + t("group.byRepo") : statusText;
+      var statusGroupLabel = (filters.group || "repo") === "repo" ? statusText + " · " + t("group.byRepo") : statusText;
 
       function onStatusGroupChange(val: string) {
         if (val.startsWith("group:")) {
@@ -1423,7 +1423,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
         else if (actionVal === "root-path") openRootPathPicker();
       }
 
-      var skillControls = [ scope === "project" ? null : h("div", { key: "summary", className: "dssm-summary" }, [["total", "summary.total"], ["enabled", "summary.enabled"], ["disabled", "summary.disabled"], ["invalid", "summary.invalid"]].map(function (item) { return h("div", { key: item[1], className: "dssm-stat" }, h("strong", null, summary[item[0]]), t(countKey(item[1], summary[item[0]]), { count: summary[item[0]] }).replace(String(summary[item[0]]), "")); })), h("div", { key: "filters", className: "dssm-filters" }, scope === "project" ? null : h("div", { className: "dssm-source-filter" }, h(SourceSelect, { value: activeSource, label: t("filter.source"), options: options, onChange: setSource })), h("div", { className: "dssm-status-filter" }, h(SourceSelect, { values: ["group:" + (filters.group || ""), "status:" + (filters.status || "")], label: t("filter.status"), text: statusGroupLabel, options: statusOptions, onChange: onStatusGroupChange })), scope === "project" ? h("div", { className: "dssm-project-filter" }, h(SourceSelect, { value: selectedWorkspace, label: t("filter.workspace"), disabled: workspaceList.loading || !workspaceRows.length, options: workspaceRows.map(function (row) { return { value: workspacePath(row), label: row.name + (!row.available ? " · " + (row.errorCode === "ENOENT" || row.errorCode === "ENOTDIR" ? t("workspace.missing") : (row.errorCode === "EACCES" || row.errorCode === "EPERM" ? t("workspace.unreadable") : t("workspace.unavailable"))) : "") + (workspaceRows.filter(function (other) { return other.name === row.name; }).length > 1 ? " · " + workspacePath(row) : ""), disabled: !row.available || !workspacePath(row) }; }), onChange: selectWorkspace })) : null, h(Input, { className: "dssm-search", allowClear: true, value: query, "aria-label": t("search"), placeholder: t("search.placeholder"), onChange: function (e) { setQuery(e.target.value); } }),
+      var skillControls = [ scope === "project" ? null : h("div", { key: "summary", className: "dssm-summary" }, [["total", "summary.total"], ["enabled", "summary.enabled"], ["disabled", "summary.disabled"], ["invalid", "summary.invalid"]].map(function (item) { return h("div", { key: item[1], className: "dssm-stat" }, h("strong", null, summary[item[0]]), t(countKey(item[1], summary[item[0]]), { count: summary[item[0]] }).replace(String(summary[item[0]]), "")); })), h("div", { key: "filters", className: "dssm-filters" }, scope === "project" ? null : h("div", { className: "dssm-source-filter" }, h(SourceSelect, { value: activeSource, label: t("filter.source"), options: options, onChange: setSource })), h("div", { className: "dssm-status-filter" }, h(SourceSelect, { values: ["group:" + (filters.group || "repo"), "status:" + (filters.status || "")], label: t("filter.status"), text: statusGroupLabel, options: statusOptions, onChange: onStatusGroupChange })), scope === "project" ? h("div", { className: "dssm-project-filter" }, h(SourceSelect, { value: selectedWorkspace, label: t("filter.workspace"), disabled: workspaceList.loading || !workspaceRows.length, options: workspaceRows.map(function (row) { return { value: workspacePath(row), label: row.name + (!row.available ? " · " + (row.errorCode === "ENOENT" || row.errorCode === "ENOTDIR" ? t("workspace.missing") : (row.errorCode === "EACCES" || row.errorCode === "EPERM" ? t("workspace.unreadable") : t("workspace.unavailable"))) : "") + (workspaceRows.filter(function (other) { return other.name === row.name; }).length > 1 ? " · " + workspacePath(row) : ""), disabled: !row.available || !workspacePath(row) }; }), onChange: selectWorkspace })) : null, h(Input, { className: "dssm-search", allowClear: true, value: query, "aria-label": t("search"), placeholder: t("search.placeholder"), onChange: function (e) { setQuery(e.target.value); } }),
         scope !== "trash" ? h("div", { className: "dssm-filter-actions" },
           filterActionButton(t("btn.adaptProvenance"), strokeIcon("M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"), function () { onAdaptProvenance(); }, busy),
           filterActionButton(t("btn.refresh"), strokeIcon("M13.5 8A5.5 5.5 0 118 2.5c2.3 0 4.3 1.4 5.1 3.5m.4-3.5v3.5H10"), function () { refresh(false); if (scope === "project") refreshWorkspaceDetails(); }, busy || snapshot.loading),

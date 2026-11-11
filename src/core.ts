@@ -2073,7 +2073,7 @@ function defaultManagerState(): ManagerState {
   const disabledSkills: ManagerState["disabledSkills"] = Object.create(null);
   const enabledSkills: ManagerState["enabledSkills"] = Object.create(null);
   for (const root of userRoots()) {
-    sources[root.key] = true;
+    sources[root.key] = root.key === "agents" ? false : true;
     disabledSkills[root.key] = [];
     enabledSkills[root.key] = [];
   }
@@ -4358,6 +4358,8 @@ export async function workspaceSkills(workspace: unknown, registered: unknown) {
       projectAgents.skills.push({
         ...g,
         enabled: false,
+        provenance: g.provenance || null,
+        provenanceInherited: true,
         path: join(projectAgents.path, g.name, "SKILL.md"),
       });
     }
