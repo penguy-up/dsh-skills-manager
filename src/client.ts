@@ -1375,7 +1375,8 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
           h("path", { d: d })
         );
       }
-      var tabItems = ["user", "project", "repositories", "trash"].map(function (value) {
+      var tabValues = props.scope === "project" ? ["project"] : ["user", "repositories", "trash"];
+      var tabItems = tabValues.map(function (value) {
         var text = t("scope." + value);
         var count = value === "trash" ? (data.trash || []).length : 0;
         var icon = getTabIcon(value);
