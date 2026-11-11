@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.1] - 2026-11-11
+
+- Fork iteration: add a right-sidebar Project Skills entry bound to the current session workspace.
+- Refine project skill provenance, enablement, and repository grouping defaults.
+
 ## [1.4.0] - 2026-11-09
 
 ### New Features
