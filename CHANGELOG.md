@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.4.1-fork.1] - 2026-11-11
+## [1.4.1-fork.2] - 2026-11-11
 
-- First fork iteration based on upstream v1.4.1.
-- Fix Project Skills in the right sidebar to bind to the current session workspace.
+- Second fork iteration based on upstream v1.4.1.
+- Fix Project Skills provenance counts and right-sidebar workspace selection.
 
 ## [1.4.1] - 2026-11-11
 

@@ -793,7 +793,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
           var items = listed.items || [];
           setWorkspaceRows(items);
           setWorkspaceList({ loading: false, error: null });
-          var selected = items.find(function (row) { return row.available && workspacePath(row) === currentProjectRoot; }) || items.find(function (row) { return row.available && workspacePath(row) === selectedWorkspaceRef.current; }) || items.find(function (row) { return row.available && workspacePath(row); });
+          var selected = items.find(function (row) { return row.available && (workspacePath(row) === currentProjectRoot || row.projectRoot === currentProjectRoot); }) || items.find(function (row) { return row.available && workspacePath(row) === selectedWorkspaceRef.current; }) || items.find(function (row) { return row.available && workspacePath(row); });
           var path = selected ? workspacePath(selected) : "";
           selectedWorkspaceRef.current = path;
           setSelectedWorkspace(path);

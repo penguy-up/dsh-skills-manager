@@ -1,5 +1,5 @@
 import type { HostContext, ProviderControl, Agent } from "./host-types.js";
-import type { Log, Serialize, CreateInput, UploadInput, SkillRequest, RepositoryInput, ScopeOptions, SkillRoot, OperationError, RootView, Diagnostic } from "./types.js";
+import type { Log, Serialize, CreateInput, UploadInput, SkillRequest, RepositoryInput, ScopeOptions, SkillRoot, OperationError, RootView, Diagnostic, SkillProvenance } from "./types.js";
 import type { ProviderCandidate } from "./core.js";
 import type { CodedError } from "./types.js";
 // dsh-skills-manager host half：设置面板的 HTTP 后端（connection.fetch 路由）
@@ -427,8 +427,24 @@ function apply(ctx: HostContext, config?: PluginConfig) {
         for (const skill of root.skills || []) skill.installSource = sources[installationSourceKey(realRoot, skill.name)] ?? null;
       }
     } catch (caught) { const error = caught as CodedError; snapshot.warnings.push({ code: "error.repo.state", error: error.message }); }
-    try { await attachProvenance(snapshot); }
-    catch (caught) { const error = caught as CodedError; snapshot.warnings.push({ code: "error.repo.state", error: error.message }); }
+    try {
+      await attachProvenance(snapshot);
+      const inheritedByName = new Map<string, SkillProvenance>();
+      for (const root of snapshot.roots) {
+        if (root.scope === "project") continue;
+        for (const skill of root.skills || []) {
+          if (skill.provenance?.repo && !inheritedByName.has(skill.name)) inheritedByName.set(skill.name, skill.provenance);
+        }
+      }
+      for (const root of snapshot.roots) {
+        for (const skill of root.skills || []) {
+          if (skill.provenanceInherited && !skill.provenance) {
+            const inherited = inheritedByName.get(skill.name);
+            if (inherited) skill.provenance = inherited;
+          }
+        }
+      }
+    } catch (caught) { const error = caught as CodedError; snapshot.warnings.push({ code: "error.repo.state", error: error.message }); }
     return snapshot;
   };
   const stateWithSources = async (req: Request) => attachSources(await state(projectOptions(req.headers.get("x-dsh-skills-session"))));
