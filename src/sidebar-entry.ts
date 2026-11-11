@@ -201,10 +201,11 @@ export function setupSidebarEntry(
   const { callApi, headers, renderPanel, ns } = options;
   let entryLocation: EntryLocation = "settings";
   let sidebarSupported = false;
+  let rightSidebarSupported = false;
   let offPanel: (() => void) | null = null;
   let offRow: (() => void) | null = null;
-  let offProjectPanel: (() => void) | null = null;
-  let offProjectRow: (() => void) | null = null;
+  let offProjectTab: (() => void) | null = null;
+  let offProjectTabType: (() => void) | null = null;
   let epoch = 0;
   let destroyed = false;
   let layoutService: {
@@ -252,25 +253,7 @@ export function setupSidebarEntry(
         if (offRow) { try { offRow(); } catch {} offRow = null; }
         if (offPanel) { try { offPanel(); } catch {} offPanel = null; }
       }
-      if (options.renderProjectPanel && !offProjectPanel) {
-        const res = ctx.slots.register({
-          name: "main",
-          key: PROJECT_SIDEBAR_PANEL_ID,
-          locale: ns,
-          inject: () => ({ t: ctx.locale?.bind ? ctx.locale.bind(ns) : undefined }),
-        }, (ownerProps?: any) => h("div", { className: "dssm-main-panel" }, options.renderProjectPanel!(ownerProps)));
-        offProjectPanel = typeof res === "function" ? (res as () => void) : () => {};
-      }
-      if (options.renderProjectPanel && !offProjectRow) {
-        const res = ctx.slots.register({
-          name: "sidebar.panellist",
-          id: PROJECT_SIDEBAR_PANEL_ID,
-          order: PROJECT_SIDEBAR_PANEL_ORDER,
-          label: () => ctx.locale.bind(ns)("sidebar.project.title"),
-          locale: ns,
-        }, ((ownerProps?: { size?: number }) => h(SkillSidebarIcon as any, ownerProps)) as any);
-        offProjectRow = typeof res === "function" ? (res as () => void) : () => {};
-      }
+      // 项目技能通过 sidebarRightTabs 原生标签注册，显示在右侧「开始」引导卡片中。
     } else {
       if (layoutService?.panelInfo && typeof layoutService.selectPanel === "function") {
         try {
@@ -288,14 +271,8 @@ export function setupSidebarEntry(
         try { offPanel(); } catch {}
         offPanel = null;
       }
-      if (offProjectRow) {
-        try { offProjectRow(); } catch {}
-        offProjectRow = null;
-      }
-      if (offProjectPanel) {
-        try { offProjectPanel(); } catch {}
-        offProjectPanel = null;
-      }
+      if (offProjectTab) { try { offProjectTab(); } catch {} offProjectTab = null; }
+      if (offProjectTabType) { try { offProjectTabType(); } catch {} offProjectTabType = null; }
     }
   };
 
@@ -360,6 +337,30 @@ export function setupSidebarEntry(
     });
   }
 
+  if (typeof (ctx as any).inject === "function") {
+    (ctx as any).inject(["sidebarRightTabs"], (scoped: any) => {
+      if (destroyed || !options.renderProjectPanel || !scoped?.sidebarRightTabs?.register) return;
+      rightSidebarSupported = true;
+      try {
+        offProjectTabType = scoped.sidebarRightTabs.register({
+          id: PROJECT_SIDEBAR_PANEL_ID,
+          kind: PROJECT_SIDEBAR_PANEL_ID,
+          title: () => ctx.locale!.bind(ns)("sidebar.project.title"),
+          guide: [{ order: PROJECT_SIDEBAR_PANEL_ORDER, title: () => ctx.locale!.bind(ns)("sidebar.project.title") }],
+        });
+        ctx.slots.inject("sidebar.right.pane.tab", () => {
+          if (!destroyed && !offProjectTab) {
+            const registered = (ctx.slots.register as any)({ name: "sidebar.right.pane.tab", key: PROJECT_SIDEBAR_PANEL_ID, inject: (sessionId: string) => ({ sessionId }) }, (ownerProps?: any) => h("div", { className: "dssm-main-panel" }, options.renderProjectPanel!(ownerProps)));
+            offProjectTab = typeof registered === "function" ? registered : () => {};
+          }
+          return () => {};
+        });
+      } catch {
+        offProjectTabType = null;
+      }
+    });
+  }
+
   // 监听 sidebar.panellist 槽位
   ctx.slots.inject("sidebar.panellist", () => {
     if (destroyed) return;
@@ -412,14 +413,8 @@ export function setupSidebarEntry(
         try { offPanel(); } catch {}
         offPanel = null;
       }
-      if (offProjectRow) {
-        try { offProjectRow(); } catch {}
-        offProjectRow = null;
-      }
-      if (offProjectPanel) {
-        try { offProjectPanel(); } catch {}
-        offProjectPanel = null;
-      }
+      if (offProjectTab) { try { offProjectTab(); } catch {} offProjectTab = null; }
+      if (offProjectTabType) { try { offProjectTabType(); } catch {} offProjectTabType = null; }
     },
   };
 }

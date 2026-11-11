@@ -593,7 +593,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
     }
     function SkillManagerSection(props: Partial<SectionProps> & { initialScope?: string }) {
       var t = resolveT(props && props.t);
-      var sessionId = props && props.useSessions ? props.useSessions(currentSessionId) : undefined;
+      var sessionId = props && props.useSessions ? props.useSessions(currentSessionId) : (props as any).sessionId;
       var scopes = react.useState(props.initialScope === "project" ? "project" : "user"), filtersState = react.useState<Record<string, Filters>>({}), expandedState = react.useState<Record<string, boolean>>({});
       // 按会话重挂载请求和表单状态，旧会话的异步响应不能覆盖新会话页面。
       return h(SkillManagerView, Object.assign({}, props, { t: t, key: sessionId || "no-session", sessionId: sessionId, scope: scopes[0], setScope: scopes[1], savedFilters: filtersState[0], setSavedFilters: filtersState[1], expanded: expandedState[0], setExpanded: expandedState[1] }));
