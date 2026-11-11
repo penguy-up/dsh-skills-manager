@@ -205,6 +205,14 @@ function registeredWorkspacePaths(ctx: HostContext): string[] | undefined {
 /** 仅从客户端当前选中的已知 Session 解析工作目录；缺失或失效时不回退其他会话。 */
 function activeSessionCwds(ctx: HostContext, sessionId: unknown) {
   if (typeof sessionId !== "string" || !sessionId.trim()) return [];
+  try {
+    const workspaces = typeof (ctx as any).get === "function" ? (ctx as any).get("workspaces") : undefined;
+    const snapshot = workspaces?.list?.getSnapshot?.();
+    const workspace = snapshot?.phase === "ready" && Array.isArray(snapshot.items)
+      ? snapshot.items.find((item: any) => Array.isArray(item.sessionIds) && item.sessionIds.includes(sessionId))
+      : undefined;
+    if (typeof workspace?.path === "string" && workspace.path.trim()) return [workspace.path.trim()];
+  } catch {}
   const sessions = ctx.sessions || (typeof ctx.get === "function" ? ctx.get("sessions") : undefined);
   if (!sessions) return [];
   const session = typeof sessions.get === "function" ? sessions.get(sessionId) :

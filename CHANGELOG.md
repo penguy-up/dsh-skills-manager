@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.4.1-fork.3] - 2026-11-11
+## [1.4.1-fork.4] - 2026-11-11
 
-- Third fork iteration based on upstream v1.4.1.
-- Document fork features and fix Project Skills provenance counts and workspace selection.
+- Fourth fork iteration based on upstream v1.4.1.
+- Bind Project Skills to the host workspace service for the current session, matching the right Files module.
 
 ## [1.4.1] - 2026-11-11
 
