@@ -847,7 +847,7 @@ import { setupSidebarEntry, sidebarLocales, sidebarEntryCss } from "./sidebar-en
       function openImport() { setResult(null); setUpload(null); setImportDestination(defaultDestination()); setModal("import"); loadWorkspaces(); }
       react.useEffect(function () {
         if (scope === "project") loadWorkspaces(true);
-      }, []);
+      }, [currentProjectRoot, scope]);
       var userDestinations = (data.writeDestinations || []).filter(function (item) { return item.key === "dsh" || item.key === "agents"; });
       // 项目条目用原项目的登记路径恢复：不依赖当前会话。找不到登记路径时不编造，交给服务端按会话判断。
       function trashRestoreBody(item: TrashItem) {
